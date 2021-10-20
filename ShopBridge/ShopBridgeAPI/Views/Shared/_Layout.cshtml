@@ -1,0 +1,19 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>@ViewBag.Title - ShopBridge</title>
+	@Styles.Render("~/Content/css")
+	@Scripts.Render("~/bundles/modernizr")
+	@Scripts.Render("~/bundles/jquery")
+	@Scripts.Render("~/bundles/angular");
+	@RenderSection("Scripts")
+</head>
+<body ng-app="ShopBridge">
+	<div class="navbar navbar-inverse" role="navigation">
+		<a class="navbar-brand" href="#">Shop Bridge</a>
+	</div>
+	@RenderSection("Body")
+</body>
+</html>
