@@ -4,64 +4,167 @@
 
 @section Scripts {
 	<script type="text/javascript" src="~/Scripts/Application/Controllers/product-controller.js"></script>
+	<script type="text/javascript">
+		$(function () {
+			$('#btnUploadImage').click(function () {
+				$('#imageUploadControl').val('');
+				$('#imageUploadControl').click();
+			}
+			);
+			$('#imageUploadControl').change(function (event) {
+				debugger;
+				var file = event.target.files[0];
+				fileName = event.target.files[0].name;
+				$('#btnUploadImage').val(fileName).trigger('input');
+				var reader = new FileReader();
+				reader.onload = function (e) {
+					$('#txtProductImageBase64').val(e.target.result).trigger('input');
+				}
+				if (file) {
+					reader.readAsDataURL(file);
+				}
+			});
+		})
+	</script>
+	<style type="text/css">
+		#imageUploadControl {
+			display: none
+		}
+
+		#txtProductImageBase64 {
+			display: none
+		}
+
+		img.product-image {
+			max-height: 50px;
+			max-width: 50px;
+		}
+
+		img.product-image-editor {
+			max-height: 200px;
+			max-width: 200px;
+		}
+
+		input.maxwidth-allowed {
+			max-width: 100% !important;
+		}
+
+		input.text-color {
+			color: #FFFFFF !important;
+		}
+
+		#btnUploadImage {
+			cursor:pointer;
+		}
+	</style>
 }
 
 @section Body {
 	<div ng-controller="productController">
-		<div id="summary" class="section panel panel-primary" ng-show="model.displaySummary">
+		<div id="summary" class="section panel panel-primary row" ng-show="model.displaySummary">
 			<div class="panel-heading">Product Summary</div>
 			<div class="panel-body">
-				<table class="table table-striped table-condensed">
-					<thead>
-						<tr><th>Product ID</th><th>Product Name</th><th>Price</th><th></th></tr>
-					</thead>
-					<tbody>
-						<tr ng-repeat="product in  model.products">
-							<td>
-								{{product.ProductID}}
-							</td>
-							<td>
-								{{product.ProductName}}
-							</td>
-							<td>{{product.Price | currency}}</td>
-							<td>
-								<button class="btn btn-xs btn-primary"
-										ng-click="removeProduct(product)">
-									Remove
+				<div id="categories" class="col-xs-3">
+					<a ng-class='{"btn btn-block btn-default btn-lg":true,"btn-primary selected":model.currentCategory==null}' ng-click="getCategory(null)">All</a>
+					<a ng-repeat="productCategory in model.productCategories" href="#" ng-click="getCategory(productCategory)" ng-class='{"btn btn-block btn-default btn-lg selected":true,"btn-primary selected":productCategory.ProductCategoryName==model.currentCategory}'>
+						{{productCategory.ProductCategoryName}}
+					</a>
+				</div>
+				<div class="col-xs-8">
+					<form name="searchForm">
+						<div class="input-group">
+							<input type="text" class="form-control maxwidth-allowed" placeholder="Search ProductName" ng-model="model.currentProductName" ng-required="true" ng-maxlength="250">
+							<div class="input-group-btn">
+								<button class="btn btn-default" type="submit" ng-click="searchForm.$valid && searchProduct()">
+									<i class="glyphicon glyphicon-search"></i>
 								</button>
-								<button class="btn btn-xs btn-primary" ng-click="handleEditClick(product)">
-									Edit
-								</button>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-				<button class="btn btn-primary" ng-click="handleCreateClick()">
-					Create
-				</button>
+							</div>
+						</div>
+					</form>
+					<table class="table table-striped table-condensed">
+						<thead>
+							<tr><th>Product ID</th><th>Product Name</th><th>Product Category</th><th>Price</th><th>Image</th><th></th></tr>
+						</thead>
+						<tbody>
+							<tr ng-repeat="product in  model.products">
+								<td>
+									{{product.ProductID}}
+								</td>
+								<td>
+									{{product.ProductName}}
+								</td>
+								<td>
+									{{product.ProductCategoryName}}
+								</td>
+								<td>{{product.Price | currency}}</td>
+								<td><img ng-src="{{product.ProductImageBase64}}" class="product-image" /></td>
+								<td>
+									<button class="btn btn-xs btn-primary"
+											ng-click="removeProduct(product)">
+										Remove
+									</button>
+									<button class="btn btn-xs btn-primary" ng-click="handleEditClick(product)">
+										Edit
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<div class="btn-group pull-right">
+						<a ng-repeat="n in pageLinks()" href="#" ng-class='{"btn btn-default":true,"btn-primary selected":n==model.pagingInfo.CurrentPage}' ng-click="getPage(n)">{{n}}</a>
+					</div>
+				</div>
+				<div class="col-xs-12 text-center">
+					<div text>
+						<button class="btn btn-primary" ng-click="handleCreateClick()">
+							Create
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div id="editor" class="section panel panel-primary" ng-hide="model.displaySummary">
 			<div class="panel-heading">
 				{{model.formTitle}} Product
 			</div>
-			<form name="productForm">
+			<form name="productForm" novalidate>
 				<div class="panel-body">
 					<div class="form-group">
 						<label>Product Name</label>
-						<input class="form-control" ng-model="model.editor.productName" ng-required="true" type="text" />
+						<input class="form-control" name="productName" ng-model="model.editor.productName" ng-required="true" type="text" ng-maxlength="250" />
+						<div ng-show="productForm.productName.$error.required" class="text-danger">required</div>
+						<div ng-show="productForm.productName.$error.maxlength" class="text-danger">Only 1 to 250 characters allowed.</div>
+					</div>
+					<div class="form-group">
+						<label>Product Category</label>
+						<select name="productCategory" ng-model="model.editor.productCategoryID" class="form-control" ng-pattern="/^[0-9]+$/" ng-required="true">
+							<option value="-1">Select</option>
+							<option ng-repeat="productCategory in model.productCategories" value="{{productCategory.ProductCategoryID}}">{{productCategory.ProductCategoryName}}</option>
+						</select>
+						<div ng-show="productForm.productCategory.$error.pattern" class="text-danger">required</div>
 					</div>
 					<div class="form-group">
 						<label>Price</label>
-						<input class="form-control" ng-model="model.editor.price" ng-required="true" type="number" />
+						<input class="form-control" name="price" ng-model="model.editor.price" ng-required="true" type="number" />
+						<span ng-show="productForm.price.$error.required" class="text-danger">required</span>
+					</div>
+					<div class="form-group">
+						<input type="text" id="btnUploadImage" name="btnUploadImage" class="btn-primary" value="Upload image" ng-required="true" ng-model="model.editor.productImageName" readonly="readonly" ng-pattern="/^([^.]+)[.](jpg|jfif|png|svg)$/i" />
+						<div ng-show="productForm.btnUploadImage.$error.pattern" class="text-danger">Select an image file. Only jpg,jfif,png,svg are allowed.</div>
+						<input type="text" id="txtProductImageBase64" ng-model="model.editor.productImageBase64" />
+						<input type="file" id="imageUploadControl" />
 					</div>
 					<input type="submit" class="btn btn-primary" ng-click="productForm.$valid && handleEditorClick()" value="Save" />
+
 					<button class="btn btn-primary"
 							ng-click="back()">
 						Back
 					</button>
 				</div>
 			</form>
+			<div>
+				<img ng-src="{{model.editor.productImageBase64}}" class="product-image-editor" />
+			</div>
 		</div>
 	</div>
 }

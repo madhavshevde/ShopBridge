@@ -8,6 +8,7 @@ using Moq;
 using ShopBridge.Domain.Abstract;
 using ShopBridge.Domain.Entities;
 using System.Linq;
+using ShopBridgeAPI.Models;
 
 namespace ShopBridge.UnitTests.Controllers
 {
@@ -60,23 +61,124 @@ namespace ShopBridge.UnitTests.Controllers
 		// public void MyTestCleanup() { }
 		//
 		#endregion
+		[TestMethod]
+		public void Can_Paginate()
+		{
+			// Arrange
+			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
+			productApiController.PageSize = 3;
+
+			// Act
+			ProductsListViewModel result = productApiController.List(null,2);
+
+			// Assert
+			ProductInfo[] prodArray = result.Products.ToArray();
+			Assert.IsTrue(prodArray.Length == 2);
+			Assert.AreEqual(prodArray[0].ProductName, "P4");
+			Assert.AreEqual(prodArray[1].ProductName, "P5");
+		}
 
 		[TestMethod]
-		public void Can_List_Products()
+		public void Can_Send_Pagination_View_Model()
+		{
+			// Arrange
+			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
+			productApiController.PageSize = 3;
+
+			// Act
+			ProductsListViewModel result = productApiController.List(null, 2);
+
+			// Assert
+			PagingInfo pageInfo = result.PagingInfo;
+			Assert.AreEqual(pageInfo.CurrentPage, 2);
+			Assert.AreEqual(pageInfo.ItemsPerPage, 3);
+			Assert.AreEqual(pageInfo.TotalItems, 5);
+			Assert.AreEqual(pageInfo.TotalPages, 2);
+		}
+
+		[TestMethod]
+		public void Can_Filter_Products()
+		{
+			// Arrange
+			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
+			productApiController.PageSize = 3;
+
+			// Act
+			ProductInfo[] result = productApiController.List("Accessories", 1).Products.ToArray();
+
+			// Assert
+			Assert.AreEqual(result.Length, 3);
+			Assert.IsTrue(result[0].ProductName == "P3" && result[0].ProductCategoryName == "Accessories");
+			Assert.IsTrue(result[1].ProductName == "P4" && result[0].ProductCategoryName == "Accessories");
+			Assert.IsTrue(result[2].ProductName == "P5" && result[0].ProductCategoryName == "Accessories");
+		}
+
+		[TestMethod]
+		public void Can_Return_Categories()
 		{
 			// Arrange
 			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
 
 			// Act
-			IEnumerable<Product> products = productApiController.List();
+			ProductCategoryInfo[] result = productApiController.GetCategories().ToArray();
 
 			// Assert
-			Product[] prodArray = products.ToArray();
-			Assert.IsTrue(prodArray.Length == 3);
-			Assert.AreEqual(prodArray[0].ProductName, "P1");
-			Assert.AreEqual(prodArray[1].ProductName, "P2");
-			Assert.AreEqual(prodArray[2].ProductName, "P3");
+			Assert.AreEqual(result.Length, 2);
+			Assert.IsTrue(result[0].ProductCategoryID == 2 && result[0].ProductCategoryName == "Components");
+			Assert.IsTrue(result[1].ProductCategoryID == 4 && result[1].ProductCategoryName == "Accessories");
 		}
+
+		[TestMethod]
+		public void Indicates_Selected_Category()
+		{
+			// Arrange
+			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
+			string categoryToSelect = "Components";
+
+			// Act
+			ProductsListViewModel result = productApiController.List(categoryToSelect, 2);
+
+			// Assert
+			Assert.AreEqual(result.CurrentCategory, categoryToSelect);
+		}
+
+
+		[TestMethod]
+		public void Generate_Category_Specific_Product_Count()
+		{
+			// Arrange
+			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
+			productApiController.PageSize = 3;
+
+			// Act
+			// Action - test the product counts for different categories
+			int result1 = productApiController.List("Components", 1).PagingInfo.TotalItems;
+			int result2 = productApiController.List("Accessories", 1).PagingInfo.TotalItems;
+
+			// Assert
+			Assert.AreEqual(result1, 2);
+			Assert.AreEqual(result2, 3);
+		}
+
+		[TestMethod]
+		public void Can_Search_Product()
+		{
+			// Arrange
+			ProductApiController productApiController = new ProductApiController(GetMockRepository().Object);
+			productApiController.PageSize = 3;
+
+			// Act
+			productApiController.Search("P", 1);
+			ProductInfo[] result = productApiController.Search("P", 1).Products.ToArray();
+
+			// Assert
+			Assert.AreEqual(result.Length, 3);
+			Assert.IsTrue(result[0].ProductName == "P1" && result[0].ProductID == 1);
+			Assert.IsTrue(result[1].ProductName == "P2" && result[1].ProductID == 2);
+			Assert.IsTrue(result[2].ProductName == "P3" && result[2].ProductID == 3);
+		}
+
+
 
 		[TestMethod]
 		public void Can_Get_Product()
@@ -130,13 +232,37 @@ namespace ShopBridge.UnitTests.Controllers
 		private Mock<IProductRepository> GetMockRepository()
 		{
 			Mock<IProductRepository> mock = new Mock<IProductRepository>();
-			List<Product> products = new List<Product> {
-				new Product {ProductID = 1, ProductName = "P1",Price=55.50M},
-				new Product {ProductID = 2, ProductName = "P2",Price=99.50M},
-				new Product {ProductID = 3, ProductName = "P3",Price=45.50M},
+			List<ProductInfo> productInfoList = new List<ProductInfo> {
+				new ProductInfo {ProductID = 1, ProductName = "P1",Price=55.50M,ProductCategoryID=2,ProductCategoryName="Components"},
+				new ProductInfo {ProductID = 2, ProductName = "P2",Price=99.50M,ProductCategoryID=2,ProductCategoryName="Components"},
+				new ProductInfo {ProductID = 3, ProductName = "P3",Price=45.50M,ProductCategoryID=4,ProductCategoryName="Accessories"},
+				new ProductInfo {ProductID = 4, ProductName = "P4",Price=495.50M,ProductCategoryID=4,ProductCategoryName="Accessories"},
+				new ProductInfo {ProductID = 5, ProductName = "P5",Price=355.50M,ProductCategoryID=4,ProductCategoryName="Accessories"},
 			}.ToList();
-			mock.Setup(m => m.Products).Returns(products);
-			mock.Setup(m => m.GetProduct(It.IsAny<int>())).Returns<int>(productID => { return products.Where(product => product.ProductID == productID).FirstOrDefault();});
+			mock.Setup(m => m.Products).Returns(productInfoList.AsQueryable());
+			mock.Setup(m => m.GetProduct(It.IsAny<int>())).Returns<int>(productID => {
+				ProductInfo productInfo = productInfoList.Where(p => p.ProductID == productID).FirstOrDefault();
+				Product product = null;
+				if(productInfo != null)
+				{
+					product = new Product
+					{
+						ProductID = productInfo.ProductID,
+						ProductCategoryID = productInfo.ProductCategoryID,
+						ProductName = productInfo.ProductName,
+						ProductImageBase64 = productInfo.ProductImageBase64,
+						ProductImageName = productInfo.ProductImageName
+					};
+				}
+				return product;
+			});
+			mock.Setup(m => m.ProductCategories).Returns(productInfoList
+				.GroupBy(productInfo => new { productInfo.ProductCategoryID, productInfo.ProductCategoryName })
+				.OrderBy(grp => grp.Key.ProductCategoryID)
+				.Select(grp => new ProductCategoryInfo { ProductCategoryID = grp.Key.ProductCategoryID, ProductCategoryName = grp.Key.ProductCategoryName })
+				.ToList()
+				.AsQueryable()
+			);
 
 			return mock;
 		}

@@ -9,7 +9,8 @@ namespace ShopBridge.Domain.Abstract
 {
 	public interface IProductRepository
 	{
-		IEnumerable<Product> Products { get; }
+		IQueryable<ProductInfo> Products { get; }
+		IQueryable<ProductCategoryInfo> ProductCategories { get; }
 		Product SaveProduct(Product product);
 		Product DeleteProduct(int productID);
 		Product GetProduct(int productID);
